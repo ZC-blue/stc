@@ -1,0 +1,44 @@
+C51 COMPILER V9.52.0.0   PW_SWITCH                                                         02/22/2019 20:06:04 PAGE 1   
+
+
+C51 COMPILER V9.52.0.0, COMPILATION OF MODULE PW_SWITCH
+OBJECT MODULE PLACED IN .\objects\pw_switch.obj
+COMPILER INVOKED BY: C:\Keil\C51\BIN\C51.EXE pw_switch\pw_switch.c LARGE BROWSE INCDIR(.\eeprom;.\IR;.\uart;.\delay;.\bu
+                    -zzer;.\rtc;.\pw_switch;.\time2) DEBUG OBJECTEXTEND PRINT(.\objects\pw_switch.lst) TABS(2) OBJECT(.\objects\pw_switch.obj
+                    -)
+
+line level    source
+
+   1          #include "pw_switch.h"
+   2          
+   3          
+   4          sbit PW_SWITCH = P1^3;
+   5          
+   6          /******************************************
+   7          *函数名称：PW_switch_init
+   8          *输入参数：无
+   9          *输出参数：无
+  10          *函数功能：控制引脚初始化
+  11          *备    注：
+  12          *******************************************/
+  13          void PW_switch_init(void)
+  14          {
+  15   1      
+  16   1      
+  17   1      
+  18   1      
+  19   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =      1    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

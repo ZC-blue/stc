@@ -1,0 +1,191 @@
+C51 COMPILER V9.52.0.0   RTC_TCS8563                                                       02/22/2019 20:06:03 PAGE 1   
+
+
+C51 COMPILER V9.52.0.0, COMPILATION OF MODULE RTC_TCS8563
+OBJECT MODULE PLACED IN .\objects\rtc_tcs8563.obj
+COMPILER INVOKED BY: C:\Keil\C51\BIN\C51.EXE rtc\rtc_tcs8563.c LARGE BROWSE INCDIR(.\eeprom;.\IR;.\uart;.\delay;.\buzzer
+                    -;.\rtc;.\pw_switch;.\time2) DEBUG OBJECTEXTEND PRINT(.\objects\rtc_tcs8563.lst) TABS(2) OBJECT(.\objects\rtc_tcs8563.obj
+                    -)
+
+line level    source
+
+   1          #include "rtc_tcs8563.h"
+   2          
+   3          #define CTRL_STA1_REG           (0x00)
+   4          #define CTRL_STA2_REG           (0x01)
+   5          #define VL_SECOND_REG           (0x02)
+   6          #define MINUTES_REG             (0x03)
+   7          #define HOURS_REG               (0x04)
+   8          #define DAYS_REG                (0x05)
+   9          #define WEEKDAYS_REG            (0x06)
+  10          #define MONTHS_REG              (0x07)
+  11          #define YEARS_REG               (0x08)
+  12          #define MINUTE_ALM_REG          (0x09)
+  13          #define HOUR_ALM_REG            (0x0A)
+  14          #define DAY_ALM_REG             (0x0B)
+  15          #define WEEKDAY_ALM_REG         (0x0C)
+  16          #define CLKOUT_CTRL_REG         (0x0D)
+  17          #define TIMER_CTRL_REG          (0x0E)
+  18          #define TIMER_REG               (0x0F)
+  19          
+  20          
+  21          #define Int8ToBCD(x)            (((x)/10)<<4)|((x)%10)
+  22          #define BCDToInt8(x)            ((((x)>>4)&0xf)*10+((x)&0xf))
+  23          
+  24          
+  25          /******************************************
+  26          *函数名称：rtc_tcs8563_init
+  27          *输入参数：无
+  28          *输出参数：无
+  29          *函数功能：rtc芯片初始化
+  30          *备    注：
+  31          *******************************************/
+  32          void rtc_tcs8563_init(void)
+  33          {
+  34   1      
+  35   1      
+  36   1      
+  37   1      
+  38   1      
+  39   1      
+  40   1      }
+  41          /******************************************
+  42          *函数名称：rtc_tcs8563_SetDate
+  43          *输入参数：设置的年月日时间参数
+  44          *输出参数：无
+  45          *函数功能：设置rtc时间
+  46          *备    注：
+  47          *******************************************/
+  48          
+  49          int  rtc_tcs8563_SetDate(unsigned int  year, unsigned int month, unsigned int day)
+  50          {
+  51   1          unsigned char     tmpDay, tmpMonth, tmpYear;
+  52   1      
+  53   1          if(   (year<1900 || year>2100)
+C51 COMPILER V9.52.0.0   RTC_TCS8563                                                       02/22/2019 20:06:03 PAGE 2   
+
+  54   1             || (month>12) || (day>31))
+  55   1          {
+  56   2      
+  57   2              return 0;
+  58   2          }
+  59   1      
+  60   1          tmpDay   = Int8ToBCD(day);
+  61   1          tmpMonth = Int8ToBCD(month);
+  62   1          
+  63   1          if(year<2000)
+  64   1          {
+  65   2              tmpMonth |= (1<<7);
+  66   2              year     -= 1900;
+  67   2          }
+  68   1          else
+  69   1          {
+  70   2              year     -= 2000;
+  71   2          }
+  72   1          tmpYear  = Int8ToBCD(year);
+  73   1      
+  74   1          I2C_WriteReg(DAYS_REG, &tmpDay);
+  75   1          I2C_WriteReg(MONTHS_REG, &tmpMonth);
+  76   1          I2C_WriteReg(YEARS_REG, &tmpYear);
+  77   1       
+  78   1          return 0;
+  79   1      }
+  80          /******************************************
+  81          *函数名称：rtc_tcs8563_GetDate
+  82          *输入参数：获取到年月日数据缓冲区
+  83          *输出参数：返回0
+  84          *函数功能：获取rtc时间
+  85          *备    注：
+  86          *******************************************/
+  87          int  rtc_tcs8563_GetDate(unsigned int *year, unsigned int *month, unsigned int *day)
+  88          {
+  89   1          unsigned char tmpDay, tmpMonth, tmpYear;
+  90   1      
+  91   1          I2C_ReadReg(DAYS_REG, &tmpDay);
+  92   1          I2C_ReadReg(MONTHS_REG, &tmpMonth);
+  93   1          I2C_ReadReg(YEARS_REG, &tmpYear);
+  94   1      
+  95   1      
+  96   1          *day  = BCDToInt8(tmpDay & 0x3f);
+  97   1          *year = BCDToInt8(tmpYear);
+  98   1      
+  99   1          if(tmpMonth & 0x80)
+ 100   1          {
+ 101   2              *year += 1900;
+ 102   2          }
+ 103   1          else
+ 104   1          {
+ 105   2              *year += 2000;
+ 106   2          }
+ 107   1          *month = BCDToInt8(tmpMonth & 0x1f);
+ 108   1      
+ 109   1          return 0;
+ 110   1      }
+ 111          /******************************************
+ 112          *函数名称：rtc_tcs8563_SetTime
+ 113          *输入参数：设置时分秒参数
+ 114          *输出参数：返回0
+ 115          *函数功能：设置rtc时分秒参数
+C51 COMPILER V9.52.0.0   RTC_TCS8563                                                       02/22/2019 20:06:03 PAGE 3   
+
+ 116          *备    注：
+ 117          *******************************************/
+ 118          
+ 119          
+ 120          int  rtc_tcs8563_SetTime(unsigned int hour, unsigned int minute, unsigned int second)
+ 121          {
+ 122   1          unsigned char    tmpHour, tmpMinute, tmpSecond;
+ 123   1      
+ 124   1          if((hour>24) || (minute>59) || (second>59))
+ 125   1          {
+ 126   2              return 0;
+ 127   2          }
+ 128   1      
+ 129   1          //convert the value of calendar's member from integer to BCD code
+ 130   1          tmpHour   =  Int8ToBCD(hour);
+ 131   1          tmpMinute =  Int8ToBCD(minute);
+ 132   1          tmpSecond =  Int8ToBCD(second);
+ 133   1      
+ 134   1          I2C_WriteReg(VL_SECOND_REG, &tmpSecond);
+ 135   1          I2C_WriteReg(MINUTES_REG, &tmpMinute);
+ 136   1          I2C_WriteReg(HOURS_REG, &tmpHour);
+ 137   1      
+ 138   1          return 0;
+ 139   1      }
+ 140          
+ 141          /******************************************
+ 142          *函数名称：rtc_tcs8563_GetTime
+ 143          *输入参数：获取时分秒的数据缓冲区
+ 144          *输出参数：返回0
+ 145          *函数功能：获取rtc时分秒时间
+ 146          *备    注：
+ 147          *******************************************/
+ 148          
+ 149          int  rtc_tcs8563_GetTime(unsigned int *hour, unsigned int *minute, unsigned int *second)
+ 150          {
+ 151   1          unsigned char    tmpHour, tmpMinute, tmpSecond;
+ 152   1      
+ 153   1          I2C_ReadReg(VL_SECOND_REG, &tmpSecond);
+ 154   1          I2C_ReadReg(MINUTES_REG, &tmpMinute);
+ 155   1          I2C_ReadReg(HOURS_REG, &tmpHour);
+ 156   1       
+ 157   1          *hour = BCDToInt8(tmpHour & 0x3f);
+ 158   1          *minute = BCDToInt8(tmpMinute & 0x7f);
+ 159   1          *second = BCDToInt8(tmpSecond & 0x7f);
+ 160   1      
+ 161   1          return 0;
+ 162   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    875    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----      42
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

@@ -1,0 +1,136 @@
+C51 COMPILER V9.52.0.0   EEPROM                                                            02/22/2019 20:06:04 PAGE 1   
+
+
+C51 COMPILER V9.52.0.0, COMPILATION OF MODULE EEPROM
+OBJECT MODULE PLACED IN .\objects\eeprom.obj
+COMPILER INVOKED BY: C:\Keil\C51\BIN\C51.EXE eeprom\eeprom.c LARGE BROWSE INCDIR(.\eeprom;.\IR;.\uart;.\delay;.\buzzer;.
+                    -\rtc;.\pw_switch;.\time2) DEBUG OBJECTEXTEND PRINT(.\objects\eeprom.lst) TABS(2) OBJECT(.\objects\eeprom.obj)
+
+line level    source
+
+   1          #include "eeprom.h"
+   2          
+   3          
+   4          sfr IAP_DATA    =   0xC2;           //IAP数据寄存器
+   5          sfr IAP_ADDRH   =   0xC3;           //IAP地址寄存器高字节
+   6          sfr IAP_ADDRL   =   0xC4;           //IAP地址寄存器低字节
+   7          sfr IAP_CMD     =   0xC5;           //IAP命令寄存器
+   8          sfr IAP_TRIG    =   0xC6;           //IAP命令触发寄存器
+   9          sfr IAP_CONTR   =   0xC7;           //IAP控制寄存器
+  10          
+  11          #define CMD_IDLE    0               //空闲模式
+  12          #define CMD_READ    1               //IAP字节读命令
+  13          #define CMD_PROGRAM 2               //IAP编程命令
+  14          #define CMD_ERASE   3               //IAP扇区删除命令
+  15          
+  16          
+  17          #define ENABLE_IAP  0x82            //if SYSCLK<20MHz
+  18          
+  19          
+  20          /******************************************
+  21          *函数名称：IapIdle
+  22          *输入参数：无
+  23          *输出参数：无
+  24          *函数功能：关闭IAP
+  25          *备    注：
+  26          *******************************************/
+  27          void IapIdle(void)
+  28          {
+  29   1          IAP_CONTR = 0;                  //关闭IAP功能
+  30   1          IAP_CMD = 0;                    //清除命令寄存器
+  31   1          IAP_TRIG = 0;                   //清除触发寄存器
+  32   1          IAP_ADDRH = 0x80;               //将地址设置到非IAP区域
+  33   1          IAP_ADDRL = 0;
+  34   1      }
+  35          
+  36          
+  37          /******************************************
+  38          *函数名称：IapReadByte
+  39          *输入参数：要读取的寄存器地址
+  40          *输出参数：读取到的数据
+  41          *函数功能：从IAP/ISP/EEPROM区域读取一个字节
+  42          *备    注：
+  43          *******************************************/
+  44          unsigned char IapReadByte(unsigned int  addr)
+  45          {
+  46   1          unsigned char dat;                       //数据缓冲区
+  47   1      
+  48   1          IAP_CONTR = ENABLE_IAP;         //使能IAP
+  49   1          IAP_CMD = CMD_READ;             //设置IAP命令
+  50   1          IAP_ADDRL = addr;               //设置IAP低地址
+  51   1          IAP_ADDRH = addr >> 8;          //设置IAP高地址
+  52   1          IAP_TRIG = 0x5a;                //写触发命令0x5a
+  53   1          IAP_TRIG = 0xa5;                //写触发命令0xa5
+  54   1          _nop_();                        //等待ISP/IAP/EEPROM操作完成
+C51 COMPILER V9.52.0.0   EEPROM                                                            02/22/2019 20:06:04 PAGE 2   
+
+  55   1          dat = IAP_DATA;                 //读取ISP/IAP/EEPROM数据
+  56   1          IapIdle();                      //关闭IAP功能
+  57   1      
+  58   1          return dat;                     //返回
+  59   1      }
+  60          
+  61          
+  62          /******************************************
+  63          *函数名称：IapProgramByte
+  64          *输入参数：要写的寄存器和要写入的数据
+  65          *输出参数：无
+  66          *函数功能：从IAP/ISP/EEPROM区域写一个字节
+  67          *备    注：
+  68          *******************************************/
+  69          void IapProgramByte(unsigned int  addr, unsigned char  dat)
+  70          {
+  71   1          IAP_CONTR = ENABLE_IAP;         //使能IAP
+  72   1          IAP_CMD = CMD_PROGRAM;          //设置IAP命令
+  73   1          IAP_ADDRL = addr;               //设置IAP低地址
+  74   1          IAP_ADDRH = addr >> 8;          //设置IAP高地址
+  75   1          IAP_DATA = dat;                 //写ISP/IAP/EEPROM数据
+  76   1          IAP_TRIG = 0x5a;                //写触发命令0x5a
+  77   1          IAP_TRIG = 0xa5;                //写触发命令0xa5
+  78   1          _nop_();                        //等待ISP/IAP/EEPROM操作完成
+  79   1          IapIdle();                      //关闭IAP功能
+  80   1      }
+  81          
+  82          
+  83          /******************************************
+  84          *函数名称：IapEraseSector
+  85          *输入参数：扇区删除的起始地址
+  86          *输出参数：无
+  87          *函数功能：扇区擦除
+  88          *备    注：
+  89          *******************************************/
+  90          void IapEraseSector(unsigned int  addr)
+  91          {
+  92   1          IAP_CONTR = ENABLE_IAP;         //使能IAP
+  93   1          IAP_CMD = CMD_ERASE;            //设置IAP命令
+  94   1          IAP_ADDRL = addr;               //设置IAP低地址
+  95   1          IAP_ADDRH = addr >> 8;          //设置IAP高地址
+  96   1          IAP_TRIG = 0x5a;                //写触发命令0x5a
+  97   1          IAP_TRIG = 0xa5;                //写触发命令0xa5
+  98   1          _nop_();                        //等待ISP/IAP/EEPROM操作完成
+  99   1          IapIdle();                      //关闭IAP功能
+ 100   1      }
+ 101          
+ 102          
+ 103          
+ 104          
+ 105          
+ 106          
+ 107          
+ 108          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =     83    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+C51 COMPILER V9.52.0.0   EEPROM                                                            02/22/2019 20:06:04 PAGE 3   
+
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

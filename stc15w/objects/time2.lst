@@ -1,0 +1,118 @@
+C51 COMPILER V9.52.0.0   TIME2                                                             02/22/2019 20:06:03 PAGE 1   
+
+
+C51 COMPILER V9.52.0.0, COMPILATION OF MODULE TIME2
+OBJECT MODULE PLACED IN .\objects\time2.obj
+COMPILER INVOKED BY: C:\Keil\C51\BIN\C51.EXE time2\time2.c LARGE BROWSE INCDIR(.\eeprom;.\IR;.\uart;.\delay;.\buzzer;.\r
+                    -tc;.\pw_switch;.\time2) DEBUG OBJECTEXTEND PRINT(.\objects\time2.lst) TABS(2) OBJECT(.\objects\time2.obj)
+
+line level    source
+
+   1          #include "time2.h"
+   2          
+   3          #define T38_4KHZ    (256-11059200/12/38400/2)
+   4          
+   5          
+   6          sfr IE2   =  0xAF;
+   7          sfr AUXR  =  0x8E;
+   8          sfr T2H   =  0xD6;
+   9          sfr T2L   =  0xD7;
+  10          
+  11          
+  12          
+  13          /******************************************
+  14          *函数名称：time2_init
+  15          *输入参数：无
+  16          *输出参数：无
+  17          *函数功能：定时器2初始化
+  18          *备    注：
+  19          *******************************************/
+  20          void time2_init(void)
+  21          {
+  22   1      
+  23   1        T2L   = T38_4KHZ;       //设置定时器2装载值
+  24   1        T2H   = T38_4KHZ >> 8; 
+  25   1          
+  26   1        AUXR |= 0x10;           //开始运行
+  27   1        
+  28   1        IE2  |= 0x04;           //开启定时器2中断
+  29   1        EA    = 1;              //开启总中断
+  30   1      
+  31   1      }
+  32          
+  33          /******************************************
+  34          *函数名称：timer2_irq
+  35          *输入参数：无
+  36          *输出参数：无
+  37          *函数功能：定时器2中断函数
+  38          *备    注：
+  39          *******************************************/
+  40          
+  41          void timer2_irq (void) interrupt 12 using 1
+  42          {
+  43   1      
+  44   1        
+  45   1        
+  46   1        
+  47   1      }
+  48          
+  49          
+  50          
+  51          
+  52          
+  53          
+  54          
+C51 COMPILER V9.52.0.0   TIME2                                                             02/22/2019 20:06:03 PAGE 2   
+
+  55          
+  56          /******************************************
+  57          *函数名称：timer2_int
+  58          *输入参数：无
+  59          *输出参数：无
+  60          *函数功能：定时器2中断函数
+  61          *备    注：
+  62          *******************************************/
+  63          void timer2_int (void) interrupt 1
+  64          {
+  65   1      
+  66   1        
+  67   1        
+  68   1        
+  69   1        
+  70   1      }
+  71          
+  72          
+  73          
+  74          
+  75          
+  76          
+  77          
+  78          
+  79          
+  80          
+  81          
+  82          
+  83          
+  84          
+  85          
+  86          
+  87          
+  88          
+  89          
+  90          
+  91          
+  92          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =     17    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

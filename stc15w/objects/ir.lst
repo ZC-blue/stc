@@ -1,0 +1,352 @@
+C51 COMPILER V9.52.0.0   IR                                                                02/20/2019 10:42:46 PAGE 1   
+
+
+C51 COMPILER V9.52.0.0, COMPILATION OF MODULE IR
+OBJECT MODULE PLACED IN .\objects\ir.obj
+COMPILER INVOKED BY: C:\Keil\C51\BIN\C51.EXE IR\ir.c BROWSE INCDIR(.\eeprom;.\IR;.\uart;.\delay;.\buzzer;.\rtc;.\pw_swit
+                    -ch;.\time2) DEBUG OBJECTEXTEND PRINT(.\objects\ir.lst) TABS(2) OBJECT(.\objects\ir.obj)
+
+line level    source
+
+   1          #include "ir.h"
+   2          #include "delay.h"
+   3          
+   4          #define     MAIN_Fosc       11059200L   //系统主时钟频率
+   5          
+   6          sfr  TH2       = 0xD6;
+   7          sfr  TL2       = 0xD7;
+   8          sfr  IE2       = 0xAF;
+   9          sfr  INT_CLKO  = 0x8F;
+  10          sfr  AUXR      = 0x8E;
+  11          sfr  AUXR1     = 0xA2;
+  12          sfr  P_SW1     = 0xA2;
+  13          sfr  P_SW2     = 0xBA;
+  14          sfr  S2CON     = 0x9A;
+  15          sfr  S2BUF     = 0x9B;
+  16          
+  17          sfr  ADC_CONTR = 0xBC;      //带AD系列
+  18          sfr  ADC_RES   = 0xBD;      //带AD系列
+  19          sfr  ADC_RESL  = 0xBE;      //带AD系列
+  20          sfr  P1ASF     = 0x9D;      //只写，模拟输入(AD或LVD)选择
+  21          
+  22          sfr  CCON      = 0xD8;        //
+  23          sbit CCF0      = CCON^0;    //PCA 模块0中断标志，由硬件置位，必须由软件清0。
+  24          sbit CCF1      = CCON^1;    //PCA 模块1中断标志，由硬件置位，必须由软件清0。
+  25          sbit CCF2      = CCON^2;    //PCA 模块2中断标志，由硬件置位，必须由软件清0。
+  26          sbit CR        = CCON^6;    //1: 允许PCA计数器计数，必须由软件清0。
+  27          sbit CF        = CCON^7;    //PCA计数器溢出（CH，CL由FFFFH变为0000H）标志。PCA计数器溢出后由硬件置位，必须
+             -由软件清0。
+  28          sfr  CMOD      = 0xD9;      //
+  29          sfr  CCAPM0    = 0xDA;      //PCA模块0的工作模式寄存器。
+  30          sfr  CCAPM1    = 0xDB;      //PCA模块1的工作模式寄存器。
+  31          sfr  CCAPM2    = 0xDC;      //PCA模块2的工作模式寄存器。
+  32          sfr  CL        = 0xE9;      //
+  33          sfr  CCAP0L    = 0xEA;      //PCA模块0的捕捉/比较寄存器低8位。
+  34          sfr  CCAP1L    = 0xEB;      //PCA模块1的捕捉/比较寄存器低8位。
+  35          sfr  CCAP2L    = 0xEC;      //PCA模块2的捕捉/比较寄存器低8位。
+  36          sfr  CH        = 0xF9;
+  37          sfr  CCAP0H    = 0xFA;      //PCA模块0的捕捉/比较寄存器高8位。
+  38          sfr  CCAP1H    = 0xFB;      //PCA模块1的捕捉/比较寄存器高8位。
+  39          sfr  CCAP2H    = 0xFC;      //PCA模块2的捕捉/比较寄存器高8位。
+  40          sfr  PCA_PWM0  = 0xF2;      //PCA模块0 PWM寄存器。
+  41          sfr  PCA_PWM1  = 0xF3;      //PCA模块1 PWM寄存器。
+  42          sfr  PCA_PWM2  = 0xF4;      //PCA模块2 PWM寄存器。
+  43          
+  44          sbit PPCA      = IP^7;      //
+  45          
+  46          
+  47          
+  48          
+  49          /*************  红外发送相关变量    **************/
+  50          #define User_code   0xFF00       //定义红外用户码
+  51          
+  52          sbit    P_IR_TX   = P3^6;        //定义红外发送端口
+  53          sbit    IRIN      = P3^3;        //定义红外接收端口
+C51 COMPILER V9.52.0.0   IR                                                                02/20/2019 10:42:46 PAGE 2   
+
+  54          bit     B_Space;                 //发送空闲(延时)标志
+  55          
+  56          unsigned int   PCA_Timer2;       //PCA2软件定时器变量
+  57          unsigned int   tx_cnt;                  //发送或空闲的脉冲计数(等于38KHZ的脉冲数，对应时间), 红外频率为38K
+             -HZ, 周期26.3us
+  58          unsigned char  TxTime;                  //发送时间
+  59          
+  60          unsigned char  IrValue[5];        // IrValue的0-3用来放原始数据，4用来放经过校验确认无误的键值
+  61          unsigned char  Time;
+  62          
+  63          /******************************************
+  64          *函数名称：DelayMs
+  65          *输入参数：延时时间长短
+  66          *输出参数：无
+  67          *函数功能：软件延时
+  68          *备    注：
+  69          *******************************************/
+  70          void DelayMs(unsigned int x)   //0.14ms误差 0us
+  71          {
+  72   1        unsigned char i;
+  73   1        while(x--)
+  74   1        {
+  75   2          for (i = 0; i<13; i++)
+  76   2          {}
+  77   2        }
+  78   1      }
+  79          /******************************************
+  80          *函数名称：IrInit
+  81          *输入参数：无
+  82          *输出参数：无
+  83          *函数功能：红外接口初始化
+  84          *备    注：使用外部中断1
+  85          *******************************************/
+  86          void IrInit(void)
+  87          {
+  88   1        IT1=1;//下降沿触发
+  89   1        EX1=1;//打开中断1允许
+  90   1        EA=1; //打开总中断
+  91   1      
+  92   1        IRIN=1;//初始化端口
+  93   1      }
+  94          
+  95          /******************************************
+  96          *函数名称：ReadIr
+  97          *输入参数：无
+  98          *输出参数：无
+  99          *函数功能：红外接收中断
+ 100          *备    注：
+ 101          *******************************************/
+ 102          void ReadIr() interrupt 0
+ 103          {
+ 104   1        unsigned char j,k;
+ 105   1        unsigned int err;
+ 106   1        Time = 0;          
+ 107   1        DelayMs(40);      // 136us*40
+ 108   1      
+ 109   1      
+ 110   1        if (IRIN == 0)    //确认是否真的接收到正确的信号
+ 111   1        {     
+ 112   2          err = 1000;       //1000*10us=10ms,超过说明接收到错误的信号
+ 113   2                            /*
+ 114   2                            当两个条件都为真时循环，如果有一个条件为假的时候跳出循环，免得程序出错的时
+C51 COMPILER V9.52.0.0   IR                                                                02/20/2019 10:42:46 PAGE 3   
+
+ 115   2                            侯，程序死在这里
+ 116   2                            */  
+ 117   2          while ((IRIN==0) && (err>0))  //等待前面9ms的低电平过去     
+ 118   2          {     
+ 119   3            DelayMs(1);     // 136us
+ 120   3            err--;
+ 121   3          } 
+ 122   2          if (IRIN == 1)      //如果正确等到9ms低电平
+ 123   2          {
+ 124   3            err = 500;
+ 125   3            while ((IRIN==1) && (err>0))     //等待4.5ms的起始高电平过去
+ 126   3            {
+ 127   4              DelayMs(1);
+ 128   4              err--;
+ 129   4            }
+ 130   3            for (k=0; k<4; k++)   //共有4组数据
+ 131   3            {     
+ 132   4              for (j=0; j<8; j++) //接收一组数据
+ 133   4              {
+ 134   5                err = 60;   
+ 135   5                while ((IRIN==0) && (err>0))//等待信号前面的560us低电平过去
+ 136   5                {
+ 137   6                  DelayMs(1);
+ 138   6                  err--;
+ 139   6                }
+ 140   5                err = 500;
+ 141   5                while ((IRIN==1) && (err>0))   //计算高电平的时间长度。
+ 142   5                {
+ 143   6                  DelayMs(1);//0.14ms
+ 144   6                  Time++;
+ 145   6                  err--;
+ 146   6                  if (Time > 30)
+ 147   6                  {
+ 148   7                    EX0 = 1;
+ 149   7                    return;
+ 150   7                  }
+ 151   6                }
+ 152   5                IrValue[k] >>= 1;  //k表示第几组数据
+ 153   5                if (Time >= 8)      //如果高电平出现大于565us，那么是1
+ 154   5                {
+ 155   6                  IrValue[k] |= 0x80;
+ 156   6                }
+ 157   5                Time = 0;   //用完时间要重新赋值              
+ 158   5              }
+ 159   4            }
+ 160   3          }
+ 161   2          if (IrValue[2] == ~IrValue[3])
+ 162   2          {
+ 163   3            IrValue[4] = IrValue[2];
+ 164   3            return;
+ 165   3          }
+ 166   2        }     
+ 167   1      }
+ 168          
+ 169          /******************************************
+ 170          *函数名称：PCA_config
+ 171          *输入参数：无
+ 172          *输出参数：无
+ 173          *函数功能：PCA_config功能配置
+ 174          *备    注：
+ 175          *******************************************/
+ 176          void PCA_config(void)
+C51 COMPILER V9.52.0.0   IR                                                                02/20/2019 10:42:46 PAGE 4   
+
+ 177          {
+ 178   1          AUXR1   = (AUXR1 & ~0x30) | 0x10;   //切换IO口, 0x00: P1.2 P1.1 P1.0 P3.7,  0x10: P3.4 P3.5 P3.6 P3.7,
+             - 0x20: P2.4 P2.5 P2.6 P2.7
+ 179   1      
+ 180   1          CCON    = 0x00;                     //清除所有中断标志，PCA控制寄存器
+ 181   1          CCAPM2  = 0x48+ 1;                  //工作模式 + 允许中断 0x00: PCA_Mode_Capture,  0x42: PCA_Mode_PWM,
+             -  0x48: PCA_Mode_SoftTimer
+ 182   1          CCAPM2 |= 0x04;                     //允许高速取反输出，一般用在16位软件定时器
+ 183   1          PCA_Timer2 = 100;                   //初值
+ 184   1          CCAP2L = (unsigned char)PCA_Timer2;            //将映射寄存器写入捕获寄存器,先写CCAPxL
+ 185   1          CCAP2H = (unsigned char)(PCA_Timer2 >> 8);      //再写CCAPxH
+ 186   1      
+ 187   1          PPCA = 1;                            //高优先级中断
+ 188   1          CMOD  = (CMOD  & ~0xe0) | 0x08;      //选择时钟源, 0x00: 12T, 0x02: 2T, 0x04: Timer0??, 0x06: ECI, 0x0
+             -8: 1T, 0x0A: 4T, 0x0C: 6T, 0x0E: 8T
+ 189   1          CH = 0;
+ 190   1          CL = 0;
+ 191   1          CR = 0;
+ 192   1          tx_cnt = 2;
+ 193   1      }
+ 194          
+ 195          
+ 196          #define D_38K_DUTY  ((MAIN_Fosc * 26) / 1000000UL + MAIN_Fosc / 3000000UL)  /*  38KHZ????   26.3us */
+ 197          #define D_38K_OFF   ((MAIN_Fosc * 17) / 1000000UL + MAIN_Fosc / 3000000UL)  /* ???????   17.3us */
+ 198          #define D_38K_ON    ((MAIN_Fosc * 9) / 1000000UL)                           /* ???????   9us */
+ 199          
+ 200          /******************************************
+ 201          *函数名称：IR_TxPulse
+ 202          *输入参数：无
+ 203          *输出参数：无
+ 204          *函数功能：发送脉冲函数
+ 205          *备    注：
+ 206          *******************************************/
+ 207          void IR_TxPulse(unsigned int  pulse)
+ 208          {
+ 209   1          tx_cnt = pulse;
+ 210   1          B_Space = 0;                    //发脉冲
+ 211   1          CCAPM2 = 0x48 | 0x04 | 0x01;    //工作模式 0x00: PCA_Mode_Capture,  0x42: PCA_Mode_PWM,  0x48: PCA_Mod
+             -e_SoftTimer
+ 212   1          CR = 1;                         //启动
+ 213   1          while(CR);
+ 214   1      }
+ 215          
+ 216          /******************************************
+ 217          *函数名称：IR_TxSpace
+ 218          *输入参数：无
+ 219          *输出参数：无
+ 220          *函数功能：发送空闲函数
+ 221          *备    注：
+ 222          *******************************************/
+ 223          void IR_TxSpace(unsigned int  pulse)
+ 224          {
+ 225   1          tx_cnt = pulse;
+ 226   1          B_Space = 1;            //空闲
+ 227   1          CCAPM2 = 0x48 | 0x01;   //工作模式 0x00: PCA_Mode_Capture,  0x42: PCA_Mode_PWM,  0x48: PCA_Mode_SoftTi
+             -mer
+ 228   1          CR = 1;                 //启动
+ 229   1          while(CR);
+ 230   1      }
+ 231          
+ 232          /******************************************
+ 233          *函数名称：PCA_config
+C51 COMPILER V9.52.0.0   IR                                                                02/20/2019 10:42:46 PAGE 5   
+
+ 234          *输入参数：无
+ 235          *输出参数：无
+ 236          *函数功能：PCA_config功能配置
+ 237          *备    注：
+ 238          *******************************************/
+ 239          
+ 240          void PCA_Handler (void) interrupt 7
+ 241          {
+ 242   1          CCON = 0x40;    //清除所有中断标志,但不关CR
+ 243   1          if(!B_Space)    //发送载波
+ 244   1          {                               //发送脉冲，交替装载TH0值，溢出时自动重装
+ 245   2              if(P_IR_TX)
+ 246   2              {
+ 247   3                  PCA_Timer2 += D_38K_OFF;    //装载高电平时间    17.3us
+ 248   3                  if(--tx_cnt == 0)   CR = 0; //pulse has sent,   stop
+ 249   3              }
+ 250   2              else    PCA_Timer2 += D_38K_ON; //装载低电平时间    9us
+ 251   2          }
+ 252   1          else    //发送暂停时间
+ 253   1          {
+ 254   2              PCA_Timer2 += D_38K_DUTY;   //装载周期时间  26.3us
+ 255   2              if(--tx_cnt == 0)   CR = 0; //空闲时间
+ 256   2          }
+ 257   1          CCAP2L = (unsigned char)PCA_Timer2;            //将影射寄存器写入捕获寄存器，先写CCAP0L
+ 258   1          CCAP2H = (unsigned char)(PCA_Timer2 >> 8); //后写CCAP0H
+ 259   1      }
+ 260          
+ 261          /******************************************
+ 262          *函数名称：IR_TxByte
+ 263          *输入参数：无
+ 264          *输出参数：无
+ 265          *函数功能：发送一个字节函数
+ 266          *备    注：
+ 267          *******************************************/
+ 268          void IR_TxByte(unsigned char dat)
+ 269          {
+ 270   1          unsigned char i;
+ 271   1          for(i=0; i<8; i++)
+ 272   1          {
+ 273   2              if(dat & 1)     IR_TxSpace(63), TxTime += 2;    //数据1对应 1.6875 + 0.5625 ms 
+ 274   2              else            IR_TxSpace(21), TxTime++;       //数据0对应 0.5625 + 0.5625 ms
+ 275   2              IR_TxPulse(21);         //脉冲都是0.5625ms
+ 276   2              dat >>= 1;              //下一个位
+ 277   2          }
+ 278   1      }
+ 279          
+ 280          
+ 281          /******************************************
+ 282          *函数名称：IR_TxPulse
+ 283          *输入参数：无
+ 284          *输出参数：无
+ 285          *函数功能：发送脉冲函数
+ 286          *备    注：
+ 287          *******************************************/
+ 288          void Send_UserCode(unsigned int senddata)
+ 289          {
+ 290   1          TxTime = 0;
+ 291   1                              //一帧数据最小长度 = 9 + 4.5 + 0.5625 + 24 * 1.125 + 8 * 2.25 = 59.0625 ms
+ 292   1                              //一帧数据最大长度 = 9 + 4.5 + 0.5625 + 8 * 1.125 + 24 * 2.25 = 77.0625 ms
+ 293   1          IR_TxPulse(342);    //对应9ms，同步头       9ms
+ 294   1          IR_TxSpace(171);    //对应4.5ms，同步头间隔 4.5ms
+ 295   1          IR_TxPulse(21);     //开始发送数据          0.5625ms
+C51 COMPILER V9.52.0.0   IR                                                                02/20/2019 10:42:46 PAGE 6   
+
+ 296   1      
+ 297   1          IR_TxByte(User_code%256);   //发用户码高字节
+ 298   1          IR_TxByte(User_code/256);   //发用户码低字节
+ 299   1          IR_TxByte(senddata);         //发数据
+ 300   1          IR_TxByte(~senddata);        //发数据反码
+ 301   1      
+ 302   1          if(TxTime < 56)     //一帧按最大77ms发送, 不够的话,补偿时间     108ms
+ 303   1          {
+ 304   2              TxTime = 56 - TxTime;
+ 305   2              TxTime = TxTime + TxTime / 8;
+ 306   2              delay_ms(TxTime);
+ 307   2          }
+ 308   1      
+ 309   1          return ;
+ 310   1      }
+ 311          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    587    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =     11       1
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =      1    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

@@ -1,0 +1,88 @@
+C51 COMPILER V9.52.0.0   MAIN                                                              02/22/2019 20:06:03 PAGE 1   
+
+
+C51 COMPILER V9.52.0.0, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN .\objects\main.obj
+COMPILER INVOKED BY: C:\Keil\C51\BIN\C51.EXE main.c LARGE BROWSE INCDIR(.\eeprom;.\IR;.\uart;.\delay;.\buzzer;.\rtc;.\pw
+                    -_switch;.\time2) DEBUG OBJECTEXTEND PRINT(.\objects\main.lst) TABS(2) OBJECT(.\objects\main.obj)
+
+line level    source
+
+   1          #include <reg51.h>     //此文件中定义了51的一些特殊功能寄存器
+   2                                 //--包含你要使用的头文件--//
+   3          
+   4          #include "stdio.h"
+   5          #include "delay.h"
+   6          
+   7          unsigned char   data1[] = 
+   8          {
+   9              0x00,0x01,0x02,0x00,0x01,0x02,0x00,0x01,0x02,0x00,0x01,0x02,0x00,0x01,0x02,
+  10            
+  11          };
+  12          
+  13          /******************************************
+  14          *函数名称：main
+  15          *输入参数：无
+  16          *输出参数：无
+  17          *函数功能：系统主函数
+  18          *备    注：
+  19          *******************************************/
+  20          void main(void)
+  21          { 
+  22   1        
+  23   1        //***********基本外设初始化*********************
+  24   1        delay_ms(10);
+  25   1        
+  26   1        uart_init();
+*** WARNING C206 IN LINE 26 OF main.c: 'uart_init': missing function-prototype
+  27   1        
+  28   1        printf("load code \n");
+  29   1        
+  30   1        PCA_config();        //红外发送
+*** WARNING C206 IN LINE 30 OF main.c: 'PCA_config': missing function-prototype
+  31   1        
+  32   1        LED_init();
+*** WARNING C206 IN LINE 32 OF main.c: 'LED_init': missing function-prototype
+  33   1        
+  34   1        buzzer_init();
+*** WARNING C206 IN LINE 34 OF main.c: 'buzzer_init': missing function-prototype
+  35   1        
+  36   1        PW_switch_init();
+*** WARNING C206 IN LINE 36 OF main.c: 'PW_switch_init': missing function-prototype
+  37   1        
+  38   1        rtc_tcs8563_init();
+*** WARNING C206 IN LINE 38 OF main.c: 'rtc_tcs8563_init': missing function-prototype
+  39   1        
+  40   1        timer0_init();
+*** WARNING C206 IN LINE 40 OF main.c: 'timer0_init': missing function-prototype
+  41   1        
+  42   1        time2_init();
+*** WARNING C206 IN LINE 42 OF main.c: 'time2_init': missing function-prototype
+  43   1        
+  44   1        delay_ms(10);
+  45   1        //***********************************************
+  46   1        while(1)
+C51 COMPILER V9.52.0.0   MAIN                                                              02/22/2019 20:06:03 PAGE 2   
+
+  47   1        {
+  48   2      
+  49   2          
+  50   2          
+  51   2          
+  52   2          
+  53   2        }
+  54   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =     49    ----
+   CONSTANT SIZE    =     12    ----
+   XDATA SIZE       =     15    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  8 WARNING(S),  0 ERROR(S)

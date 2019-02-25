@@ -1,0 +1,1 @@
+"eeprom\at24c02.c" BROWSE INCDIR(.\eeprom;.\IR;.\uart;.\delay;.\buzzer) DEBUG OBJECTEXTEND PRINT(.\objects\at24c02.lst) TABS (2) OBJECT(.\objects\at24c02.obj)

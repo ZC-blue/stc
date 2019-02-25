@@ -1,0 +1,16 @@
+".\objects\ir_receive.obj",
+".\objects\ir_send.obj",
+".\objects\i2c.obj",
+".\objects\rtc_tcs8563.obj",
+".\objects\led.obj",
+".\objects\uart.obj",
+".\objects\STARTUP.obj",
+".\objects\main.obj",
+".\objects\time2.obj",
+".\objects\delay.obj",
+".\objects\buzzer.obj",
+".\objects\eeprom.obj",
+".\objects\algorithm.obj",
+".\objects\pw_switch.obj" 
+TO ".\objects\stc15w" 
+PRINT(".\objects\stc15w.m51") RAMSIZE(256) 

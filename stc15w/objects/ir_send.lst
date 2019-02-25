@@ -1,0 +1,191 @@
+C51 COMPILER V9.52.0.0   IR_SEND                                                           02/22/2019 20:06:03 PAGE 1   
+
+
+C51 COMPILER V9.52.0.0, COMPILATION OF MODULE IR_SEND
+OBJECT MODULE PLACED IN .\objects\ir_send.obj
+COMPILER INVOKED BY: C:\Keil\C51\BIN\C51.EXE IR\ir_send.c LARGE BROWSE INCDIR(.\eeprom;.\IR;.\uart;.\delay;.\buzzer;.\rt
+                    -c;.\pw_switch;.\time2) DEBUG OBJECTEXTEND PRINT(.\objects\ir_send.lst) TABS(2) OBJECT(.\objects\ir_send.obj)
+
+line level    source
+
+   1          #include "ir.h"
+   2          #include "delay.h"
+   3          
+   4          
+   5          
+   6          /*************  红外发送相关变量    **************/
+   7          #define User_code   0xFF00      //定义红外用户码
+   8          #define IR_TX_ON    0
+   9          #define IR_TX_OFF   1
+  10          
+  11          sbit    P_IR_TX   = P3^6;   //定义红外发送端口
+  12          bit     B_Space;    //发送空闲(延时)标志
+  13          
+  14          unsigned int     PCA_Timer0; //PCA2软件定时器变量
+  15          unsigned int     tx_cnt;     //发送或空闲的脉冲计数(等于38KHZ的脉冲数，对应时间), 红外频率为38KHZ, 周期26.
+             -3us
+  16          unsigned char    TxTime;     //发送时间
+  17          
+  18          
+  19          
+  20          /******************************************
+  21          *函数名称：IR_TxPulse
+  22          *输入参数：无
+  23          *输出参数：无
+  24          *函数功能：发送脉冲函数
+  25          *备    注：
+  26          *******************************************/
+  27          void IR_TxPulse(unsigned int pulse)
+  28          {
+  29   1          tx_cnt = pulse;
+  30   1          B_Space = 0;    //发脉冲
+  31   1          CCAPM2 = 0x48 | 0x04 | 0x01;    //工作模式 0x00: PCA_Mode_Capture,  0x42: PCA_Mode_PWM,  0x48: PCA_Mod
+             -e_SoftTimer
+  32   1          CR = 1;     //启动
+  33   1          while(CR);
+  34   1          P_IR_TX = IR_TX_OFF;
+  35   1      }
+  36          /******************************************
+  37          *函数名称：IR_TxSpace
+  38          *输入参数：无
+  39          *输出参数：无
+  40          *函数功能：发送空闲函数
+  41          *备    注：
+  42          *******************************************/
+  43          void IR_TxSpace(unsigned int pulse)
+  44          {
+  45   1          tx_cnt = pulse;
+  46   1          B_Space = 1;    //空闲
+  47   1          CCAPM2 = 0x48 | 0x01;   //工作模式 0x00: PCA_Mode_Capture,  0x42: PCA_Mode_PWM,  0x48: PCA_Mode_SoftTi
+             -mer
+  48   1          CR = 1;     //启动
+  49   1          while(CR);
+  50   1          P_IR_TX = IR_TX_OFF;
+  51   1      }
+C51 COMPILER V9.52.0.0   IR_SEND                                                           02/22/2019 20:06:03 PAGE 2   
+
+  52          /******************************************
+  53          *函数名称：IR_TxByte
+  54          *输入参数：无
+  55          *输出参数：无
+  56          *函数功能：发送一个字节函数
+  57          *备    注：
+  58          *******************************************/
+  59          void IR_TxByte(unsigned char dat)
+  60          {
+  61   1          unsigned char i;
+  62   1          for(i=0; i<8; i++)
+  63   1          {
+  64   2              if(dat & 1)     IR_TxSpace(63), TxTime += 2;    //数据1对应 1.6875 + 0.5625 ms 
+  65   2              else            IR_TxSpace(21), TxTime++;       //数据0对应 0.5625 + 0.5625 ms
+  66   2              IR_TxPulse(21);         //脉冲都是0.5625ms
+  67   2              dat >>= 1;              //下一个位
+  68   2          }
+  69   1      }
+  70          
+  71          /******************************************
+  72          *函数名称：PCA_config
+  73          *输入参数：无
+  74          *输出参数：无
+  75          *函数功能：PCA_config功能配置
+  76          *备    注：
+  77          *******************************************/
+  78          void PCA_config(void)
+  79          {
+  80   1          //PCA0初始化
+  81   1          CCON = 0x00;                          //清除所有中断标志
+  82   1          CCAPM0  = 0x48 | 0x01;                //工作模式 + 中断允许 0x00: PCA_Mode_Capture,  0x42: PCA_Mode_PW
+             -M,  0x48: PCA_Mode_SoftTimer
+  83   1          PCA_Timer0 = 100;                     //随便给一个小的初值
+  84   1          CCAP0L = (unsigned char)PCA_Timer0;    //将影射寄存器写入捕获寄存器，先写CCAP0L
+  85   1          CCAP0H = (unsigned char)(PCA_Timer0 >> 8); //后写CCAP0H
+  86   1      
+  87   1          PPCA = 1;                                  //高优先级中断
+  88   1          CMOD  = (CMOD  & ~0xe0) | 0x08;            //选择时钟源, 0x00: 12T, 0x02: 2T, 0x04: Timer0溢出, 0x06: 
+             -ECI, 0x08: 1T, 0x0A: 4T, 0x0C: 6T, 0x0E: 8T
+  89   1          CH = 0;
+  90   1          CL = 0;
+  91   1          CR = 0;
+  92   1          tx_cnt = 2;
+  93   1      }
+  94          
+  95          
+  96          /******************************************
+  97          *函数名称：Send_UserCode
+  98          *输入参数：无
+  99          *输出参数：无
+ 100          *函数功能：发送脉冲函数
+ 101          *备    注：
+ 102          *******************************************/
+ 103          void Send_UserCode(unsigned int senddata)
+ 104          {
+ 105   1          TxTime = 0;
+ 106   1                              //一帧数据最小长度 = 9 + 4.5 + 0.5625 + 24 * 1.125 + 8 * 2.25 = 59.0625 ms
+ 107   1                              //一帧数据最大长度 = 9 + 4.5 + 0.5625 + 8 * 1.125 + 24 * 2.25 = 77.0625 ms
+ 108   1          IR_TxPulse(342);    //对应9ms，同步头       9ms
+ 109   1          IR_TxSpace(171);    //对应4.5ms，同步头间隔 4.5ms
+ 110   1          IR_TxPulse(21);     //开始发送数据          0.5625ms
+ 111   1      
+C51 COMPILER V9.52.0.0   IR_SEND                                                           02/22/2019 20:06:03 PAGE 3   
+
+ 112   1          IR_TxByte(User_code%256);   //发用户码高字节
+ 113   1          IR_TxByte(User_code/256);   //发用户码低字节
+ 114   1          IR_TxByte(senddata);         //发数据
+ 115   1          IR_TxByte(~senddata);        //发数据反码
+ 116   1      
+ 117   1          if(TxTime < 56)     //一帧按最大77ms发送, 不够的话,补偿时间     108ms
+ 118   1          {
+ 119   2              TxTime = 56 - TxTime;
+ 120   2              TxTime = TxTime + TxTime / 8;
+ 121   2              delay_ms(TxTime);
+ 122   2          }
+ 123   1      
+ 124   1          return ;
+ 125   1      }
+ 126          /******************************************
+ 127          *函数名称：PCA_Handler
+ 128          *输入参数：无
+ 129          *输出参数：无
+ 130          *函数功能：发送脉冲函数
+ 131          *备    注：
+ 132          *******************************************/
+ 133          
+ 134          #define D_38K_DUTY  ((MAIN_Fosc * 26) / 1000000UL + MAIN_Fosc / 3000000UL)  /*  38KHZ周期时间   26.3us */
+ 135          #define D_38K_OFF   ((MAIN_Fosc * 17) / 1000000UL + MAIN_Fosc / 3000000UL)  /* 发射管关闭时间   17.3us */
+ 136          #define D_38K_ON    ((MAIN_Fosc * 9) / 1000000UL)                           /* 发射管导通时间   9us */
+ 137          
+ 138          void PCA_Handler (void) interrupt 7
+ 139          {
+ 140   1          CCON = 0x40;    //清除所有中断标志,但不关CR
+ 141   1          if(!B_Space)    //发送载波
+ 142   1          {                               //发送脉冲，交替装载TH0值，溢出时自动重装
+ 143   2              P_IR_TX = ~P_IR_TX;
+ 144   2              if(P_IR_TX)
+ 145   2              {
+ 146   3                  PCA_Timer0 += D_38K_OFF;    //装载高电平时间    17.3us
+ 147   3                  if(--tx_cnt == 0)   CR = 0; //pulse has sent,   stop
+ 148   3              }
+ 149   2              else    PCA_Timer0 += D_38K_ON; //装载低电平时间    9us
+ 150   2          }
+ 151   1          else    //发送暂停时间
+ 152   1          {
+ 153   2              PCA_Timer0 += D_38K_DUTY;   //装载周期时间  26.3us
+ 154   2              if(--tx_cnt == 0)   CR = 0; //空闲时间
+ 155   2          }
+ 156   1          CCAP0L = (unsigned char)PCA_Timer0;            //将影射寄存器写入捕获寄存器，先写CCAP0L
+ 157   1          CCAP0H = (unsigned char)(PCA_Timer0 >> 8); //后写CCAP0H
+ 158   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    362    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =      5    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =      1    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

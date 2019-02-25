@@ -1,0 +1,9 @@
+"ir.obj",
+"uart.obj",
+"STARTUP.obj",
+"main.obj",
+"delay.obj",
+"at24c02.obj",
+"i2c.obj" 
+TO "stc15w" 
+RAMSIZE(256) 
